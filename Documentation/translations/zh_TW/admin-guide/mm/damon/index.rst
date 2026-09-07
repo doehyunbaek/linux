@@ -6,15 +6,16 @@
 :翻譯:
 
  司延騰 Yanteng Si <siyanteng@loongson.cn>
+ Doehyun Baek <doehyunbaek@gmail.com>
 
 :校譯:
 
-============
-監測數據訪問
-============
+=====================================
+DAMON：資料存取監測與存取感知系統操作
+=====================================
 
-:doc:`DAMON </mm/damon/index>` 允許輕量級的數據訪問監測。使用DAMON，
-用戶可以分析他們系統的內存訪問模式，並優化它們。
+:doc:`DAMON </mm/damon/index>` 是 Linux 核心的子系統，用於高效率的
+資料存取監測與存取感知系統操作。
 
 .. toctree::
    :maxdepth: 2
@@ -23,8 +24,5 @@
    usage
    reclaim
    lru_sort
-
-
-
-
-
+   stat
+   ../../../mm/damon/design

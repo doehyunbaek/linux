@@ -6,6 +6,7 @@
 :翻譯:
 
  司延騰 Yanteng Si <siyanteng@loongson.cn>
+ Doehyun Baek <doehyunbaek@gmail.com>
 
 :校譯:
 
@@ -13,51 +14,95 @@
 入門指南
 ========
 
-本文通過演示DAMON的默認用戶空間工具，簡要地介紹瞭如何使用DAMON。請注意，爲了簡潔
-起見，本文檔只描述了它的部分功能。更多細節請參考該工具的使用文檔。
-`doc <https://github.com/damonitor/damo/blob/next/USAGE.md>`_ .
+本文透過示範 DAMON 的預設使用者空間工具，簡要介紹 DAMON 的使用方式。
+為求簡潔，本文僅說明部分功能。詳情請參閱該工具的 `使用文件
+<https://github.com/damonitor/damo/blob/next/USAGE.md>`_。
 
 
-前提條件
+必要條件
 ========
 
-內核
+核心
 ----
 
-首先，你要確保你當前系統中跑的內核構建時選定了這個功能選項 ``CONFIG_DAMON_*=y``.
+請先確認系統執行的核心在建置時啟用了 ``CONFIG_DAMON_*=y``。
 
 
-用戶空間工具
-------------
+使用者空間工具
+--------------
 
-在演示中，我們將使用DAMON的默認用戶空間工具，稱爲DAMON Operator（DAMO）。它可以在
-https://github.com/damonitor/damo找到。下面的例子假設DAMO在你的$PATH上。當然，但
-這並不是強制性的。
+以下示範使用 DAMON 的預設使用者空間工具 DAMON Operator（DAMO）。
+此工具可從 https://github.com/damonitor/damo 取得。下列範例假設 ``damo``
+位於 ``$PATH`` 中，但這並非必要條件。
 
-因爲DAMO使用了DAMON的sysfs接口（詳情請參考:doc:`usage`），你應該確保
-:doc:`sysfs </filesystems/sysfs>` 被掛載。
+由於 DAMO 使用 DAMON 的 sysfs 介面（詳情請參閱 :doc:`usage`），
+請確認已掛載 :doc:`sysfs </filesystems/sysfs>`。
 
-記錄數據訪問模式
+
+擷取資料存取模式快照
+====================
+
+下列命令顯示程式在執行當下的記憶體存取模式。::
+
+    $ git clone https://github.com/sjp38/masim; cd masim; make
+    $ sudo damo start "./masim ./configs/stairs.cfg --quiet"
+    $ sudo damo report access
+    heatmap: 641111111000000000000000000000000000000000000000000000[...]33333333333333335557984444[...]7
+    # min/max temperatures: -1,840,000,000, 370,010,000, column size: 3.925 MiB
+    0   addr 86.182 TiB   size 8.000 KiB   access 0 %   age 14.900 s
+    1   addr 86.182 TiB   size 8.000 KiB   access 60 %  age 0 ns
+    2   addr 86.182 TiB   size 3.422 MiB   access 0 %   age 4.100 s
+    3   addr 86.182 TiB   size 2.004 MiB   access 95 %  age 2.200 s
+    4   addr 86.182 TiB   size 29.688 MiB  access 0 %   age 14.100 s
+    5   addr 86.182 TiB   size 29.516 MiB  access 0 %   age 16.700 s
+    6   addr 86.182 TiB   size 29.633 MiB  access 0 %   age 17.900 s
+    7   addr 86.182 TiB   size 117.652 MiB access 0 %   age 18.400 s
+    8   addr 126.990 TiB  size 62.332 MiB  access 0 %   age 9.500 s
+    9   addr 126.990 TiB  size 13.980 MiB  access 0 %   age 5.200 s
+    10  addr 126.990 TiB  size 9.539 MiB   access 100 % age 3.700 s
+    11  addr 126.990 TiB  size 16.098 MiB  access 0 %   age 6.400 s
+    12  addr 127.987 TiB  size 132.000 KiB access 0 %   age 2.900 s
+    total size: 314.008 MiB
+    $ sudo damo stop
+
+第一個命令下載並建置名為 ``masim`` 的人工記憶體存取產生器程式。
+第二個命令要求 DAMO 以指定的命令啟動程式，並讓 DAMON 監測新啟動的行程。
+第三個命令從 DAMON 取得該行程目前的存取模式快照，並以方便閱讀的格式顯示。
+
+輸出的第一行以單行熱圖顯示各區域的相對存取溫度（熱度）。熱圖的每個欄位
+代表受監測虛擬位址空間中大小相同的區域；欄位的位置與數字分別表示區域的
+相對位置與存取溫度。``[...]`` 代表虛擬位址空間中未映射的大區域。
+第二行提供協助理解熱圖的補充資訊。
+
+從第三行起，每行顯示該行程的虛擬位址範圍（``addr XX size XX``）、
+存取頻率（``access XX %``），以及此存取模式持續的時間（``age XX``）。
+例如，大小約為 9.5 MiB 的第十一個區域，在最近 3.7 秒內一直具有最高的
+存取頻率。最後，第四個命令停止 DAMON。
+
+請注意，DAMON 不僅能監測虛擬位址空間，也能監測實體位址空間等多種
+位址空間。
+
+
+記錄資料存取模式
 ================
 
-下面的命令記錄了一個程序的內存訪問模式，並將監測結果保存到文件中。 ::
+下列命令記錄程式的記憶體存取模式，並將監測結果儲存至檔案。::
 
-    $ git clone https://github.com/sjp38/masim
-    $ cd masim; make; ./masim ./configs/zigzag.cfg &
+    $ ./masim ./configs/zigzag.cfg &
     $ sudo damo record -o damon.data $(pidof masim)
 
-命令的前兩行下載了一個人工內存訪問生成器程序並在後臺運行。生成器將重複地逐一訪問兩個
-100 MiB大小的內存區域。你可以用你的真實工作負載來代替它。最後一行要求 ``damo`` 將
-訪問模式記錄在 ``damon.data`` 文件中。
+第一行命令再次執行人工記憶體存取產生器。此程式會反覆依序存取兩個大小為
+100 MiB 的記憶體區域，也可換成實際的工作負載。最後一行要求 ``damo`` 將
+存取模式記錄至 ``damon.data`` 檔案。
 
 
-將記錄的模式可視化
-==================
+以視覺化方式呈現記錄的模式
+==========================
 
-你可以在heatmap中直觀地看到這種模式，顯示哪個內存區域（X軸）何時被訪問（Y軸）以及訪
-問的頻率（數字）。::
+熱圖可呈現哪個記憶體區域（X 軸）在何時（Y 軸）被存取，以及其存取頻率
+（數字）。::
 
-    $ sudo damo report heats --heatmap stdout
+    $ sudo damo report heatmap
     22222222222222222222222222222222222222211111111111111111111111111111111111111100
     44444444444444444444444444444444444444434444444444444444444444444444444444443200
     44444444444444444444444444444444444444433444444444444444444444444444444444444200
@@ -77,7 +122,7 @@ https://github.com/damonitor/damo找到。下面的例子假設DAMO在你的$PAT
     # y-axis: time (15256597248362-15326899978162: 1 m 10.303 s)
     # resolution: 80x40 (2.461 MiB and 1.758 s for each character)
 
-你也可以直觀地看到工作集的大小分佈，按大小排序。::
+也可依大小排序，以視覺化方式呈現工作集大小的分布。::
 
     $ sudo damo report wss --range 0 101 10
     # <percentile> <wss>
@@ -95,7 +140,7 @@ https://github.com/damonitor/damo找到。下面的例子假設DAMO在你的$PAT
      90     190.703 MiB |*********************************************************  |
     100     196.875 MiB |***********************************************************|
 
-在上述命令中使用 ``--sortby`` 選項，可以顯示工作集的大小是如何按時間順序變化的。::
+在上述命令加入 ``--sortby`` 選項，可依時間順序顯示工作集大小的變化。::
 
     $ sudo damo report wss --range 0 101 10 --sortby time
     # <percentile> <wss>
@@ -114,12 +159,12 @@ https://github.com/damonitor/damo找到。下面的例子假設DAMO在你的$PAT
     100      95.398 MiB |*****************************                              |
 
 
-數據訪問模式感知的內存管理
-==========================
+資料存取模式感知的記憶體管理
+============================
 
-以下三個命令使每一個大小>=4K的內存區域在你的工作負載中沒有被訪問>=60秒，就會被換掉。 ::
+下列命令會換出工作負載中大小至少為 4K、且至少 60 秒未被存取的所有
+記憶體區域。::
 
-    $ echo "#min-size max-size min-acc max-acc min-age max-age action" > test_scheme
-    $ echo "4K        max      0       0       60s     max     pageout" >> test_scheme
-    $ damo schemes -c test_scheme <pid of your workload>
-
+    $ sudo damo start --damos_access_rate 0 0 --damos_sz_region 4K max \
+                      --damos_age 60s max --damos_action pageout \
+                      --target_pid <pid of your workload>
